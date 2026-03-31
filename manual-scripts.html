@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual técnico dos scripts | Ucred RevOps</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">GS</div>
+        <div>
+          <div class="brand-title">Manual técnico dos scripts</div>
+          <div class="brand-subtitle">Ucred RevOps</div>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <button class="nav-toggle" data-target="nav-geral" aria-expanded="true">Visão geral<span class="caret">▾</span></button>
+        <div id="nav-geral" class="nav-items">
+          <a class="nav-link" href="#visao-geral">Visão geral</a>
+          <a class="nav-link" href="#arquitetura">Arquitetura</a>
+          <a class="nav-link" href="#fluxo-dados">Fluxo de dados</a>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <button class="nav-toggle" data-target="nav-estrutura" aria-expanded="true">Estrutura técnica<span class="caret">▾</span></button>
+        <div id="nav-estrutura" class="nav-items">
+          <a class="nav-link" href="#arquivos">Arquivos do projeto</a>
+          <a class="nav-link" href="#gatilhos">Gatilhos e automações</a>
+          <a class="nav-link" href="#abas-base">Abas base</a>
+          <a class="nav-link" href="#abas-historicas">Históricos, eventos e governança</a>
+          <a class="nav-link" href="#bases-looker">Bases auxiliares do Looker</a>
+        </div>
+      </div>
+
+      <div class="nav-group">
+        <button class="nav-toggle" data-target="nav-operacao" aria-expanded="true">Operação e suporte<span class="caret">▾</span></button>
+        <div id="nav-operacao" class="nav-items">
+          <a class="nav-link" href="#rotina-operacional">Rotina operacional</a>
+          <a class="nav-link" href="#testes">Testes e troubleshooting</a>
+          <a class="nav-link" href="#manutencao">Checklist de manutenção</a>
+        </div>
+      </div>
+
+      <div class="sidebar-note">
+        Este manual descreve a arquitetura, a finalidade de cada módulo do projeto e a rotina segura de manutenção. O objetivo não é reexplicar o código linha por linha, mas documentar o sistema de forma consultável.
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="content-inner">
+      <div class="hero" id="visao-geral">
+        <div class="hero-eyebrow">Manual técnico</div>
+        <h1>Scripts e automações da solução Ucred RevOps</h1>
+        <p>
+          O projeto usa o RD CRM como origem de dados, a planilha como camada de estrutura e o Looker Studio como camada de leitura.
+          A lógica principal do sistema está no Apps Script: sincronização, enriquecimento, históricos, eventos, governança de títulos e bases auxiliares do painel.
+        </p>
+      </div>
+
+      <section class="section" id="arquitetura">
+        <div class="section-header">
+          <div class="section-kicker">Arquitetura</div>
+          <h2>Como a solução foi organizada</h2>
+          <div class="section-intro">O desenho do projeto separa origem, tratamento, histórico e leitura para reduzir complexidade no painel e facilitar manutenção.</div>
+        </div>
+
+        <div class="two-col-cards">
+          <div class="card">
+            <div class="kb-title">
+              <h3>Origem do dado</h3>
+              <span class="badge type">RD CRM</span>
+            </div>
+            <div class="kb-grid">
+              <div class="kb-block wide">
+                <div class="kb-label">Finalidade</div>
+                <div class="kb-value">É a origem oficial de negócios, empresas, pessoas, atividades, usuários, fontes, motivos de perda e custom fields.</div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">Ponto de atenção</div>
+                <div class="kb-value">A solução não depende de exportação manual. A comunicação é feita pela API v1 e o dado precisa voltar ao RD quando houver correção de título de atividade.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kb-title">
+              <h3>Camada de estrutura</h3>
+              <span class="badge type">Planilha</span>
+            </div>
+            <div class="kb-grid">
+              <div class="kb-block wide">
+                <div class="kb-label">Finalidade</div>
+                <div class="kb-value">Receber o dado do CRM, enriquecer o que faltar, calcular campos derivados, registrar trilhas históricas e preparar bases auxiliares para o Looker.</div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">Ponto de atenção</div>
+                <div class="kb-value">Nem toda aba é origem. Algumas são operacionais, outras históricas e outras existem só para servir o painel.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title">
+            <h3>Frentes de atuação do script</h3>
+          </div>
+          <div class="kb-grid">
+            <div class="kb-block">
+              <div class="kb-label">1. Sincronização</div>
+              <div class="kb-value">Atualiza Negócios, Empresas, Pessoas e Atividades por ID, sem duplicação cega.</div>
+            </div>
+            <div class="kb-block">
+              <div class="kb-label">2. Enriquecimento</div>
+              <div class="kb-value">Completa campos que a listagem inicial da API não entrega com segurança.</div>
+            </div>
+            <div class="kb-block">
+              <div class="kb-label">3. Históricos</div>
+              <div class="kb-value">Mantém trilhas próprias de etapa e responsável para leitura temporal correta.</div>
+            </div>
+            <div class="kb-block">
+              <div class="kb-label">4. Eventos</div>
+              <div class="kb-value">Consolida acontecimentos relevantes em uma linha do tempo por negociação.</div>
+            </div>
+            <div class="kb-block">
+              <div class="kb-label">5. Governança</div>
+              <div class="kb-value">Sugere e aplica padronização de títulos de atividades no RD CRM.</div>
+            </div>
+            <div class="kb-block">
+              <div class="kb-label">6. Bases auxiliares</div>
+              <div class="kb-value">Entrega ao Looker bases prontas para coorte do Closer e cobertura do CS.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="fluxo-dados">
+        <div class="section-header">
+          <div class="section-kicker">Fluxo</div>
+          <h2>Fluxo de dados do projeto</h2>
+          <div class="section-intro">A base não sai do RD pronta para o painel. Ela atravessa camadas até virar dado consultável e auditável.</div>
+        </div>
+
+        <div class="card">
+          <div class="kb-grid">
+            <div class="kb-block wide">
+              <div class="kb-label">Sequência</div>
+              <div class="kb-value"><strong>RD CRM</strong> → API v1 → abas base → enriquecimento → históricos → eventos → governança de atividades → bases auxiliares do Looker → painel.</div>
+            </div>
+            <div class="kb-block wide">
+              <div class="kb-label">Regra estrutural</div>
+              <div class="kb-value">Se a lógica do indicador ficar longa demais para ser explicada no Looker, ela deve sair do painel e virar base estruturada na planilha.</div>
+            </div>
+          </div>
+          <div class="notice warn">
+            O painel deve ser a camada de leitura. A lógica estrutural do dado deve ficar no script e na planilha, não em fórmulas frágeis dentro do Looker.
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="arquivos">
+        <div class="section-header">
+          <div class="section-kicker">Estrutura técnica</div>
+          <h2>Arquivos do projeto</h2>
+          <div class="section-intro">Os arquivos foram separados por responsabilidade. A manutenção correta começa identificando o módulo certo antes de alterar qualquer função.</div>
+        </div>
+
+        <div class="file-list">
+          <details open>
+            <summary><code>00_config.gs</code> · configuração central</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Guarda constantes do projeto: nomes de abas, parâmetros da API, nomes de gatilhos, status de padronização e catálogo oficial de títulos.</div>
+              <div class="meta-item"><strong>Mudar aqui quando</strong>Houver mudança estrutural de cabeçalho, status, aba, catálogo de título ou parâmetros gerais da solução.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>01_menu_gatilhos.gs</code> · menus e gatilhos</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Cria os menus da planilha e controla criação/remoção dos gatilhos instaláveis.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Se o menu não aparecer, este arquivo é um dos primeiros pontos de revisão junto com erros de sintaxe do projeto.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>02_api_rd.gs</code> · acesso à API</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Centraliza GET e PUT na API v1 do RD CRM, com tratamento de retry e erro HTTP.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Qualquer falha de autenticação, timeout, retry ou update no RD passa primeiro por este módulo.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>03_sheets_logs.gs</code> · escrita e logs</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Garante estrutura das abas, faz upsert por ID e registra logs na aba Controle.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Os logs entram da linha 2 para baixo, com o mais recente no topo.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>04_contexto_mapas.gs</code> · contexto e mapas</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Monta mapas de usuários, fontes, motivos de perda, custom fields e etapa → funil.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Se o funil vier errado ou um custom field parar de preencher, este arquivo entra na revisão.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>05_sync_recentes_backfill.gs</code> · orquestração principal</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Executa a rotina principal de atualização, sync recente, backfill, rotação leve e chamadas para módulos derivados.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>É o arquivo mais sensível em termos de ordem de execução.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>06_enriquecimento.gs</code> · complementação de dados</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Completa campos faltantes em Empresas, Pessoas, Atividades e Negócios.</div>
+              <div class="meta-item"><strong>Mudar aqui quando</strong>A listagem da API não trouxer mais um campo da forma esperada.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>07_metricas.gs</code> · métricas derivadas</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Recalcula os campos derivados dos negócios a partir das atividades.</div>
+              <div class="meta-item"><strong>Saídas principais</strong>Total de atividades, atividades em aberto, concluídas, última atividade e dias desde a última atividade.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>08_historico_etapas.gs</code> · trilha de etapas</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Registra períodos contínuos por etapa, abrindo e fechando linhas conforme a mudança detectada.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Não reconstrói passado perfeito anterior à implantação; passa a ser confiável a partir da detecção do script.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>09_padronizacao_atividades.gs</code> · governança de títulos</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Controla sugestão segura, revisão manual, gatilho de atualização e escrita de título no RD CRM.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>A regra atual é conservadora e só sugere quando a correspondência é segura dentro da família semântica correta.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>10_utils.gs</code> · helpers compartilhados</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Reúne funções utilitárias de texto, datas, parsing, similaridade e helpers genéricos.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>É a base de apoio dos outros módulos. Mudanças aqui costumam ter efeito transversal.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>11_historico_responsaveis.gs</code> · trilha de ownership</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Registra os períodos contínuos de responsabilidade sobre o negócio.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Troca de responsável independe da troca de etapa. Esta aba existe para preservar essa precisão.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>12_eventos_negociacao.gs</code> · camada cronológica</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Consolida eventos de etapa, responsável e atividades em uma linha do tempo consultável.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Os eventos de atividade precisam preencher também título e tipo da atividade em colunas próprias.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>13_mappers.gs</code> · tradução da API para as abas</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Traduz o retorno da API para a estrutura das abas da planilha.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Se a estrutura do retorno do RD mudar, este arquivo costuma ser o primeiro a precisar de ajuste.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>14_cobertura_cs.gs</code> · base auxiliar de CS</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Gera a base mensal de cobertura do CS em A:I da aba <code>[Looker] Cobertura CS</code>, a partir da régua atual em K:L.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>A régua reescreve a história. Mudanças em K:L exigem rodar o recálculo da aba.</div>
+            </div>
+          </details>
+          <details>
+            <summary><code>99_tutorial.gs</code> e <code>99_tutorial_popup.html</code> · onboarding</summary>
+            <div class="file-meta">
+              <div class="meta-item"><strong>Finalidade</strong>Montam o tutorial guiado da planilha, com navegação por abas e explicações operacionais.</div>
+              <div class="meta-item"><strong>Ponto de atenção</strong>Se o nome do arquivo HTML mudar, a função que abre o popup precisa apontar para o novo nome.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section" id="gatilhos">
+        <div class="section-header">
+          <div class="section-kicker">Automação</div>
+          <h2>Gatilhos e ações manuais</h2>
+          <div class="section-intro">O projeto combina gatilho periódico, gatilho de edição e ações manuais para manutenção segura.</div>
+        </div>
+
+        <div class="two-col-cards">
+          <div class="card">
+            <div class="kb-title"><h3>Gatilho de 15 minutos</h3><span class="badge type">Automático</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide">
+                <div class="kb-label">Função executada</div>
+                <div class="kb-value"><code>atualizarPainel</code></div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">O que faz</div>
+                <div class="kb-value">Sync recente, rotação leve, enriquecimento, recálculo de métricas, atualização de históricos, eventos e padronização.</div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">Proteção</div>
+                <div class="kb-value">Usa <code>LockService</code> para impedir concorrência entre execuções críticas.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kb-title"><h3>Gatilho da padronização</h3><span class="badge type">On edit</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide">
+                <div class="kb-label">Função executada</div>
+                <div class="kb-value"><code>V1_ONEDIT_PADRONIZACAO</code></div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">O que faz</div>
+                <div class="kb-value">Reage a alterações no título final e ao checkbox <code>Atualizar?</code>, controlando revisão e update no RD CRM.</div>
+              </div>
+              <div class="kb-block wide">
+                <div class="kb-label">Ponto de atenção</div>
+                <div class="kb-value">Não é um checkbox decorativo. Ele dispara tentativa real de atualização do título da atividade na origem.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title"><h3>Ações manuais disponíveis no menu</h3></div>
+          <div class="kb-grid">
+            <div class="kb-block"><div class="kb-label">Testar conexão</div><div class="kb-value">Valida acesso à API antes de qualquer diagnóstico mais profundo.</div></div>
+            <div class="kb-block"><div class="kb-label">Sincronizar recentes</div><div class="kb-value">Roda o fluxo principal sem esperar o gatilho de 15 minutos.</div></div>
+            <div class="kb-block"><div class="kb-label">Backfill</div><div class="kb-value">Carrega histórico de forma controlada, por lotes e por página.</div></div>
+            <div class="kb-block"><div class="kb-label">Histórico de etapas</div><div class="kb-value">Permite reconstruir a camada histórica detectada sem depender só do sync recente.</div></div>
+            <div class="kb-block"><div class="kb-label">Enriquecimento</div><div class="kb-value">Busca campos faltantes sem precisar esperar o gatilho automático.</div></div>
+            <div class="kb-block"><div class="kb-label">Padronização</div><div class="kb-value">Sincroniza ou processa a fila da governança de títulos sob demanda.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="abas-base">
+        <div class="section-header">
+          <div class="section-kicker">Abas</div>
+          <h2>Abas base alimentadas pelo script</h2>
+          <div class="section-intro">São as abas que sustentam a operação principal e a maior parte das leituras do projeto.</div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title"><h3>Negócios</h3><span class="badge type">Aba base</span></div>
+          <div class="kb-grid">
+            <div class="kb-block"><div class="kb-label">Finalidade</div><div class="kb-value">Centralizar o estado atual de cada negociação.</div></div>
+            <div class="kb-block"><div class="kb-label">Atualiza quando</div><div class="kb-value"><code>atualizarPainel</code>, <code>V1_SINCRONIZAR_RECENTES</code>, backfill e enriquecimento.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Campos-chave</div><div class="kb-value">ID do Negócio, Funil, Etapa, Status, Responsável, SDR, Closer, CS, Origem, Fonte, Campanha, Data de Fechamento.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Pontos de atenção</div><div class="kb-value">Funil é resolvido a partir de etapa; Status é derivado de <code>closed_at</code> + <code>win</code>; métricas de atividade são recalculadas a partir da aba Atividades.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Teste rápido</div><div class="kb-value">Rodar sync recente e conferir se Etapa, Funil, Status e Última Atualização estão coerentes em negócios conhecidos.</div></div>
+          </div>
+        </div>
+
+        <div class="two-col-cards">
+          <div class="card">
+            <div class="kb-title"><h3>Empresas</h3><span class="badge type">Apoio cadastral</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Guardar organizações com localização e responsável comercial.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">Cidade e Estado podem depender de enriquecimento posterior por detalhe da organização.</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="kb-title"><h3>Pessoas</h3><span class="badge type">Apoio relacional</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Registrar contatos, empresa vinculada e responsável comercial.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">É útil para auditoria e consulta, mas não substitui a aba Negócios para leitura de pipeline.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title"><h3>Atividades</h3><span class="badge type">Base operacional</span></div>
+          <div class="kb-grid">
+            <div class="kb-block"><div class="kb-label">Finalidade</div><div class="kb-value">Concentrar títulos, responsáveis e datas das atividades do CRM.</div></div>
+            <div class="kb-block"><div class="kb-label">Usado por</div><div class="kb-value">Indicadores do Looker, padronização, métricas, eventos, coorte do Closer e cobertura do CS.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">O valor analítico dessa aba depende diretamente da qualidade do título da atividade. Quando o título estiver inconsistente, a correção recomendada deve passar pela aba Padronização de Atividades.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Teste rápido</div><div class="kb-value">Conferir se atividades recentes entram com <code>ID do Negócio</code>, <code>Título</code>, <code>Responsável</code> e <code>Data de Conclusão</code> coerentes.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="abas-historicas">
+        <div class="section-header">
+          <div class="section-kicker">Históricos</div>
+          <h2>Históricos, eventos e governança</h2>
+          <div class="section-intro">Essas camadas existem para preservar contexto temporal, ownership e qualidade do dado.</div>
+        </div>
+
+        <div class="two-col-cards">
+          <div class="card">
+            <div class="kb-title"><h3>Histórico de Etapas</h3><span class="badge type">Histórico</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Registrar cada período contínuo do negócio em uma etapa do funil.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Pontos de atenção</div><div class="kb-value">A confiança histórica nasce a partir da detecção do script. Não representa com garantia toda a vida anterior do negócio antes da implantação.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Teste rápido</div><div class="kb-value">Buscar um negócio conhecido e confirmar se há 1 linha aberta com <code>Atual? = Sim</code> coerente com a aba Negócios.</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kb-title"><h3>Histórico de Responsáveis</h3><span class="badge type">Histórico</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Registrar períodos contínuos de responsabilidade sobre o negócio, mesmo sem mudança de etapa.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Pontos de atenção</div><div class="kb-value">Troca de responsável e troca de etapa são dimensões diferentes. Essa aba existe para preservar essa precisão.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Teste rápido</div><div class="kb-value">Buscar um negócio com passagem de bastão e conferir se a linha atual bate com o responsável da aba Negócios.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title"><h3>Eventos da Negociação</h3><span class="badge type">Consolidada</span></div>
+          <div class="kb-grid">
+            <div class="kb-block"><div class="kb-label">Finalidade</div><div class="kb-value">Reunir acontecimentos em ordem cronológica: etapa, responsável e atividade.</div></div>
+            <div class="kb-block"><div class="kb-label">Leitura correta</div><div class="kb-value">É linha do tempo, não estado atual. A consulta serve para entender o que aconteceu e quando.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Campos importantes</div><div class="kb-value">Data/Hora do Evento, Tipo de Evento, Evento, Responsável, Título da Atividade, Tipo da Atividade, Origem do Registro, ID de Origem e Descrição.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">Eventos de atividade devem preencher título e tipo da atividade em colunas próprias. Eventos de etapa ou responsável devem deixar esses campos vazios.</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kb-title"><h3>Padronização de Atividades</h3><span class="badge type">Governança</span></div>
+          <div class="kb-grid">
+            <div class="kb-block"><div class="kb-label">Finalidade</div><div class="kb-value">Corrigir títulos das atividades e devolver a correção ao RD CRM.</div></div>
+            <div class="kb-block"><div class="kb-label">Operação</div><div class="kb-value">Ajustar o título final, revisar o status e só então marcar <code>Atualizar?</code>.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Pontos de atenção</div><div class="kb-value">O checkbox dispara ação real na origem. A lógica de sugestão é conservadora e respeita famílias semânticas para evitar sugestões aleatórias.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Status esperados</div><div class="kb-value"><code>Já padronizado</code>, <code>Pendente</code>, <code>Pendente revisão</code>, <code>Sem correspondência segura</code>, <code>Atualizado</code> e <code>Erro</code>.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="bases-looker">
+        <div class="section-header">
+          <div class="section-kicker">Bases auxiliares</div>
+          <h2>Bases do Looker mantidas na planilha</h2>
+          <div class="section-intro">Quando a lógica do indicador fica sensível demais para o painel, ela sai do Looker e passa a ser entregue pronta pela planilha.</div>
+        </div>
+
+        <div class="two-col-cards">
+          <div class="card">
+            <div class="kb-title"><h3>[Looker] Coorte Closer</h3><span class="badge type">Base auxiliar</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Resolver a coorte de parceria → garantia e entregar ao painel quantidades e percentuais de 30, 60 e 90 dias.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Como ler</div><div class="kb-value">1 linha por negócio. A data de referência é o contrato de parceria. As colunas de 30/60/90 dias mostram se o mesmo negócio virou garantia dentro da janela correspondente.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">Quando os títulos oficiais ainda não estiverem em uso na operação, a base pode ficar vazia. Isso não é erro do painel.</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="kb-title"><h3>[Looker] Cobertura CS</h3><span class="badge type">Base auxiliar</span></div>
+            <div class="kb-grid">
+              <div class="kb-block wide"><div class="kb-label">Finalidade</div><div class="kb-value">Gerar a leitura mensal da carteira do CS, incluindo cobertura, reuniões válidas e detalhes da cobertura no mês.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Regra estrutural</div><div class="kb-value">A régua em <code>K:L</code> define quais títulos contam como cobertura. A regra vigente reescreve a história da base quando a função de recálculo é executada.</div></div>
+              <div class="kb-block wide"><div class="kb-label">Ponto de atenção</div><div class="kb-value">Alterar a régua sem rodar <code>V1_RECALCULAR_COBERTURA_CS</code> deixa o painel lendo uma base antiga em relação ao critério atual.</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="rotina-operacional">
+        <div class="section-header">
+          <div class="section-kicker">Operação</div>
+          <h2>Rotina operacional</h2>
+          <div class="section-intro">A maior parte da base se mantém sozinha. O time atua principalmente na leitura, na governança dos títulos e em ajustes pontuais de regra.</div>
+        </div>
+
+        <div class="card">
+          <div class="kb-grid">
+            <div class="kb-block wide"><div class="kb-label">O que é automático</div><div class="kb-value">Atualização das abas base, enriquecimento, métricas, históricos, eventos e sincronização da fila de padronização.</div></div>
+            <div class="kb-block wide"><div class="kb-label">O que depende de ação humana</div><div class="kb-value">Validar títulos na aba Padronização de Atividades, alterar a régua do CS, recalcular a cobertura do CS, rodar backfill ou enriquecimento sob demanda.</div></div>
+            <div class="kb-block wide"><div class="kb-label">Consulta mais comum</div><div class="kb-value">Negócios para estado atual, Atividades para execução, históricos para trajetória, Eventos da Negociação para linha do tempo e bases auxiliares para validação do painel.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="testes">
+        <div class="section-header">
+          <div class="section-kicker">Validação</div>
+          <h2>Testes e troubleshooting</h2>
+          <div class="section-intro">Qualquer manutenção deve passar por uma sequência curta e previsível antes de ser considerada concluída.</div>
+        </div>
+
+        <div class="qa-list">
+          <details open>
+            <summary>Sequência padrão de teste</summary>
+            <div class="kb-value">
+              <ul>
+                <li>Recarregar a planilha</li>
+                <li>Rodar <code>1) Testar conexão</code></li>
+                <li>Rodar <code>2) Sincronizar (recentes)</code></li>
+                <li>Conferir a aba Controle</li>
+                <li>Conferir a aba diretamente afetada pela mudança</li>
+                <li>Validar o reflexo no Looker</li>
+              </ul>
+            </div>
+          </details>
+          <details>
+            <summary>Se o menu não aparecer</summary>
+            <div class="kb-value">Verificar erro de sintaxe no projeto, função <code>onOpen</code> e nomes de arquivos HTML chamados pelo tutorial.</div>
+          </details>
+          <details>
+            <summary>Se “Testar conexão” falhar</summary>
+            <div class="kb-value">Conferir <code>RD_TOKEN</code>, <code>RD_URL_BASE</code> e resposta da API. Não faz sentido seguir para sync se a conexão estiver quebrada.</div>
+          </details>
+          <details>
+            <summary>Se o Looker não refletir a mudança</summary>
+            <div class="kb-value">Validar primeiro a planilha. O painel é leitura final, não camada primária de diagnóstico.</div>
+          </details>
+          <details>
+            <summary>Se o checkbox da Padronização não atualizar o RD</summary>
+            <div class="kb-value">Ler o <strong>Status</strong> e <strong>Observações</strong> da linha. O erro mais comum é título final vazio, payload recusado ou falha momentânea de rede/API.</div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section" id="manutencao">
+        <div class="section-header">
+          <div class="section-kicker">Manutenção</div>
+          <h2>Checklist de manutenção técnica</h2>
+          <div class="section-intro">Use este checklist antes de considerar qualquer alteração como concluída.</div>
+        </div>
+
+        <div class="card">
+          <div class="kb-grid">
+            <div class="kb-block wide">
+              <div class="kb-label">Checklist</div>
+              <div class="kb-value">
+                <ul>
+                  <li>A planilha recarrega sem perder os menus</li>
+                  <li><code>1) Testar conexão</code> funciona</li>
+                  <li><code>2) Sincronizar (recentes)</code> termina sem erro</li>
+                  <li>A aba Controle registra a execução corretamente</li>
+                  <li>A aba impactada foi validada visualmente</li>
+                  <li>O Looker refletiu o comportamento esperado</li>
+                  <li>Se houver gatilho envolvido, ele continua ativo</li>
+                  <li>Se houver regra de negócio alterada, ela foi documentada</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="notice danger">
+            Mudança sem checklist costuma gerar o pior tipo de problema: a base parece “quase certa”, mas o erro só aparece no painel, dias depois.
+          </div>
+        </div>
+      </section>
+
+        <div class="footer-space"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
